@@ -23,13 +23,13 @@ st.set_page_config(page_title="Estimador de riesgo de ACV — Grupo 7",
                    page_icon="🩺", layout="wide")
 
 # ------------------------------------------------------------------ Paleta clínica
-TEAL    = "#2C7A7B"   # color principal (verde azulado, "médico")
-TEAL_D  = "#255E60"   # variante oscura para títulos
-INK     = "#233240"   # texto
-C_BAJO  = "#2F855A"   # verde sereno
+TEAL    = "#127B7D"   # color principal (verde azulado, "médico")
+TEAL_D  = "#2A777A"   # variante oscura para títulos
+INK     = "#223342"   # texto
+C_BAJO  = "#3B9669"   # verde sereno
 C_MED   = "#B07D1A"   # ámbar sobrio
-C_ALTO  = "#BC6A5A"   # coral apagado (atención SIN alarma; nada de rojo puro)
-BG      = "#F3F8F9"   # fondo muy claro
+C_ALTO  = "#CE6652"   # coral apagado (atención SIN alarma; nada de rojo puro)
+BG      = "#FCFFFF"   # fondo muy claro
 
 # Plantilla común para todos los gráficos (fondo claro, texto oscuro y legible)
 PLOT_LAYOUT = dict(
@@ -61,6 +61,7 @@ div.stButton > button {{
     background:{TEAL}; color:#ffffff !important; border:0; border-radius:11px;
     font-weight:700; font-size:19px; padding:13px 0;
 }}
+div.stButton > button * {{ color:#ffffff !important; }}
 div.stButton > button:hover {{ background:{TEAL_D}; color:#ffffff !important; }}
 /* Etiquetas de los campos en negrita */
 label, [data-testid="stWidgetLabel"] p {{ font-weight:600 !important; color:{INK} !important; font-size:16px !important; }}
@@ -87,7 +88,7 @@ GENERO  = {"Femenino": "Female", "Masculino": "Male"}
 SI_NO   = {"Sí": "Yes", "No": "No"}
 RESID   = {"Urbana": "Urban", "Rural": "Rural"}
 TRABAJO = {"Empleo privado": "Private", "Trabajo independiente": "Self-employed",
-           "Empleo público": "Govt_job", "Es menor / no trabaja": "children",
+           "Empleo público": "Govt_job", "Menor de edad": "children",
            "Nunca trabajó": "Never_worked"}
 FUMADOR = {"Nunca fumó": "never smoked", "Ex fumador/a": "formerly smoked",
            "Fuma actualmente": "smokes", "Prefiero no decir / no sé": "Unknown"}
@@ -133,7 +134,7 @@ Esta herramienta aprendió a partir de **más de 5.000 registros reales de pacie
 Para cada persona mira datos como la edad, la presión, la glucosa o el IMC y estima su
 **nivel de riesgo** comparado con el resto.
 
-- **Detecta a alrededor de {int(round(m['Recall_ACV']*100))} de cada 100 personas** que sí
+- **Detecta alrededor de {int(round(m['Recall_ACV']*100))} de cada 100 personas** que sí
   tuvieron un ACV. Preferimos que *"suene la alarma de más"* antes que dejar pasar un caso.
 - Como contrapartida, **también marca riesgo en varias personas que nunca lo tendrán**. Por eso,
   un resultado alto hay que tomarlo con calma y, si querés, consultarlo con un médico.
@@ -152,7 +153,7 @@ st.caption("Movés los controles o elegís la opción que corresponda. Al final,
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    age = st.slider("Edad (años)", 0, 100, 55)
+    age = st.slider("Edad (años)", 0, 110, 55)
     gender_es = st.selectbox("Género", list(GENERO.keys()))
     married_es = st.selectbox("¿Estuvo casado/a alguna vez?", list(SI_NO.keys()))
 with col2:
@@ -163,7 +164,8 @@ with col3:
     avg_glucose = st.slider("Nivel de glucosa en sangre (mg/dL)", 50.0, 280.0, 105.0, step=0.5,
                             help="Es el azúcar en sangre. En ayunas, un valor normal ronda 70–100 mg/dL.")
     bmi = st.slider("Índice de masa corporal – IMC", 10.0, 60.0, 28.0, step=0.1,
-                    help="Relaciona peso y altura. Entre 18,5 y 25 se considera peso normal; más de 30, obesidad.")
+                    help="Relaciona peso y altura. Entre 18,5 y 25 se considera peso normal; más de 30, obesidad.\n\n"
+                         "**¿Cómo se calcula?** IMC = peso (kg) ÷ altura² (m²). Por ejemplo, 70 kg ÷ 1,75² m² ≈ 22,9.")
     work_es = st.selectbox("Situación laboral", list(TRABAJO.keys()))
 smoking_es = st.selectbox("¿Fuma o fumó?", list(FUMADOR.keys()))
 
@@ -177,13 +179,13 @@ if age <= 0: errores.append("La edad debe ser mayor a 0.")
 if not (50 <= avg_glucose <= 280): errores.append("La glucosa debe estar entre 50 y 280 mg/dL.")
 if not (10 <= bmi <= 60): errores.append("El IMC debe estar entre 10 y 60.")
 if age < 18 and work_type not in ["children", "Never_worked"]:
-    st.warning("Para menores de 18 lo habitual es 'Es menor / no trabaja' o 'Nunca trabajó'. "
+    st.warning("Para menores de 18 lo habitual es 'Menor de edad' o 'Nunca trabajó'. "
                "Revisá la situación laboral.")
 
 st.text("")  # respiro visual
 
 # ------------------------------------------------------------------ Cálculo y resultado
-if st.button("🔎 Calcular mi nivel de riesgo", type="primary", use_container_width=True):
+if st.button("**🔎 CALCULAR mi nivel de riesgo**", type="primary", use_container_width=True):
     if errores:
         for e in errores:
             st.error(e)
@@ -201,18 +203,18 @@ if st.button("🔎 Calcular mi nivel de riesgo", type="primary", use_container_w
         # Nivel + color sereno + mensaje que informa y acompaña (sin asustar)
         if proba >= THRESH:
             nivel, color = "más alto que el promedio", C_ALTO
-            mensaje = ("Tu perfil se ubica en un nivel de riesgo **más alto que el promedio**. "
-                       "Esto **no** quiere decir que vayas a tener un ACV: es una señal para "
+            mensaje = ("Tu perfil se ubica en un nivel de riesgo MÁS ALTO que el promedio. "
+                       "Esto NO quiere decir que vayas a tener un ACV: es una señal para "
                        "prestar atención a los factores que sí se pueden cuidar —presión, glucosa, "
                        "peso y tabaquismo— y, si te quedás más tranquilo/a, conversarlo con un médico.")
         elif proba >= base * 2:
             nivel, color = "intermedio", C_MED
-            mensaje = ("Tu perfil muestra un nivel de riesgo **intermedio**. La gran mayoría de las "
-                       "personas en esta franja **no** tienen un ACV; aun así, cuidar los hábitos "
+            mensaje = ("Tu perfil muestra un nivel de riesgo INTERMEDIO. La gran mayoría de las "
+                       "personas en esta franja NO tienen un ACV; aun así, cuidar los hábitos "
                        "de salud siempre suma.")
         else:
             nivel, color = "bajo", C_BAJO
-            mensaje = ("Tu perfil se ubica en un nivel de riesgo **bajo** respecto del promedio. "
+            mensaje = ("Tu perfil se ubica en un nivel de riesgo BAJO respecto del promedio. "
                        "Es una buena noticia; mantener hábitos saludables es la mejor forma de "
                        "que siga así.")
 
@@ -230,16 +232,16 @@ if st.button("🔎 Calcular mi nivel de riesgo", type="primary", use_container_w
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=puntaje,
-                number={"suffix": " / 100", "font": {"size": 40, "color": INK}},
+                number={"suffix": " / 100", "font": {"size": 40, "color": "black"}},
                 gauge={
-                    "axis": {"range": [0, 100], "tickcolor": INK},
-                    "bar": {"color": color, "thickness": 0.28},
+                    "axis": {"range": [0, 100], "tickcolor": "black"},
+                    "bar": {"color": color, "thickness": 0.15},
                     "bgcolor": "white",
                     "borderwidth": 0,
                     "steps": [
-                        {"range": [0, base * 200], "color": "#DCEFE4"},   # zona baja (verde suave)
-                        {"range": [base * 200, 50], "color": "#F7ECD2"},  # zona media (ámbar suave)
-                        {"range": [50, 100], "color": "#F3DDD7"},         # zona alta (coral suave)
+                        {"range": [0, base * 200], "color": "#5ED590"},   # zona baja (verde suave)
+                        {"range": [base * 200, 50], "color": "#F4CF78"},  # zona media (ámbar suave)
+                        {"range": [50, 100], "color": "#DF785B"},         # zona alta (coral suave)
                     ],
                 }))
             fig.update_layout(height=270, **PLOT_LAYOUT)
@@ -302,5 +304,5 @@ with st.expander("📂 Opción avanzada: analizar muchas personas a la vez (arch
             st.error(f"No se pudo procesar el archivo. Revisá que tenga las columnas indicadas. ({ex})")
 
 st.divider()
-st.caption("Grupo 7 — Formenti, Montero, Do Brito, Ortiz · UCA 2026 · Proyecto integrador de "
+st.caption("Grupo 7 — Formenti Lucía, Montero Juan Cruz, Do Brito Franco, Ortiz Victoria · UCA 2026 · Proyecto integrador de "
            "Inteligencia Artificial y Aprendizaje Automático I · Herramienta educativa, no diagnóstica.")
